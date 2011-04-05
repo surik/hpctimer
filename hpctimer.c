@@ -36,7 +36,7 @@ void hpctimer_free(hpctimer_t *timer)
 
 double hpctimer_wtime(hpctimer_t *timer) 
 {
-    return timer->gettime()  0.000001;; /* convert to seconds */
+    return timer->gettime() * 0.000001;; /* convert to seconds */
 }
 
 static unsigned long long hpctimer_gettimeofday()
