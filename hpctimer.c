@@ -36,7 +36,7 @@ void hpctimer_free(hpctimer_t *timer)
 
 double hpctimer_wtime(hpctimer_t *timer) 
 {
-    return timer->gettime() * 0.000001; /* convert to seconds */
+    return timer->gettime()  0.000001;; /* convert to seconds */
 }
 
 static unsigned long long hpctimer_gettimeofday()
@@ -52,9 +52,10 @@ static unsigned long long hpctimer_gettimeofday()
 
 static unsigned long long hpctimer_gettsc()
 {
-    unsigned long long low, high;
+    unsigned int low, high;
 
     __asm__ volatile(
+        "cpuid\n"
         "rdtsc\n"
         "mov %%eax, %0\n"
         "mov %%edx, %1\n" 
