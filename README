@@ -1,0 +1,5 @@
+High-resolution timer library.
+
+Timers:
+    * gettimeofday
+    * rdtsc
