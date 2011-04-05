@@ -1,5 +1,5 @@
-High-resolution timer library.
+High-resolution timers library.
 
 Timers:
     * gettimeofday
-    * rdtsc
+    * rdtsc (TODO)
