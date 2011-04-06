@@ -2,4 +2,11 @@ High-resolution timers library.
 
 Timers:
     * gettimeofday
-    * rdtsc (TODO)
+    * rdtsc
+
+**********
+Builds:
+    $ make
+
+Clean:
+    $ make clean
