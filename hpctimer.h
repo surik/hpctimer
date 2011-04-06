@@ -1,9 +1,16 @@
+/*
+ * hpctimer.h: high-resolution timers library.
+ */
+
 #ifndef HPCTIMER_H_ 
 #define HPCTIMER_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define uint64_t unsigned long long int
+#define uint32_t unsigned int
 
 typedef enum {
     HPCTIMER_GETTIMEOFDAY   = 0,
@@ -12,7 +19,9 @@ typedef enum {
 
 typedef struct {
     hpctimer_type_t type;
-    unsigned long long (*gettime) (); 
+    uint64_t overhead;
+    uint64_t freq;
+    uint64_t (*gettime) (); 
 } hpctimer_t;
 
 
