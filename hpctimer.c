@@ -80,7 +80,6 @@ static void hpctimer_gettimeofday_init(hpctimer_t *timer)
     start = hpctimer_gettimeofday();
     stop = hpctimer_gettimeofday();
     overhead = (stop - start) * freq;
-    printf("%.20f\n", overhead);
 
     timer->overhead = overhead > 0 ? overhead : 0;
     timer->freq = 1;
@@ -118,8 +117,6 @@ static void hpctimer_tsctimer_init(hpctimer_t *timer)
     timer->freq = (stop - start - timer->overhead) /
                   (tv2.tv_sec * usec + tv2.tv_usec - 
                    tv1.tv_sec * usec - tv1.tv_usec);
-
-    printf("freq = %Ld Hz\n", timer->freq);
 }
 
 static __inline__ uint64_t hpctimer_gettimeofday()
