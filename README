@@ -3,6 +3,7 @@ High-resolution timers library.
 Timers:
     * gettimeofday
     * rdtsc
+    * clcok_gettime via CLOCK_MONOTONIC
 
 **********
 Builds:
