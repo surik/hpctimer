@@ -3,7 +3,10 @@ High-resolution timers library.
 Timers:
     * gettimeofday
     * rdtsc
-    * clcok_gettime via CLOCK_MONOTONIC
+    * clock_gettime via CLOCK_PROCESS_CPUTIME_ID
+
+For use clock_gettime timers need glibc >= 2.6 and linking with librt.
+At initializing a timer can make a bind to CPU uses the flag HPCTIMER_BINDTOCPU.
 
 **********
 Builds:
