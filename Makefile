@@ -13,4 +13,4 @@ $(TARGET): $(OBJS)
 	$(AR) rc $@ $^
 
 clean:
-	rm -rf ./*.o ./*~ $(TARGET)
+	rm -Rf ./*.o ./*~ $(TARGET)
