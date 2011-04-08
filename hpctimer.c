@@ -76,6 +76,9 @@ hpctimer_t *hpctimer_init(hpctimer_type_t type, uint32_t flags)
 
 void hpctimer_free(hpctimer_t *timer) 
 {
+    if (timer->flags & HPCTIMER_BINDTOCPU)
+        hpctimer_restore_cpuaffinity(timer);
+
     if (timer)
         free(timer);
 }
@@ -259,16 +262,16 @@ static __inline__ uint64_t hpctimer_time_gettimeofday()
 
 static __inline__ uint64_t hpctimer_time_tsc()
 {
-	uint32_t low, high;
+    uint32_t low, high;
 	
-	__asm__ __volatile__(
-		"xorl %%eax, %%eax\n"
-		"cpuid\n"
+    __asm__ __volatile__(
+        "xorl %%eax, %%eax\n"
+        "cpuid\n"
         "rdtsc\n"
-		: "=a" (low), "=d" (high)
-	);
-			
-	return ((uint64_t)high << 32) | low;
+        : "=a" (low), "=d" (high)
+    );
+		
+    return ((uint64_t)high << 32) | low;
 }
 
 static __inline__ uint64_t hpctimer_time_mpiwtime()
