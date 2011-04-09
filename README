@@ -4,6 +4,7 @@ Timers:
     * gettimeofday
     * rdtsc
     * clock_gettime via CLOCK_PROCESS_CPUTIME_ID
+    * MPI_Wtime (TODO)
 
 For use clock_gettime timers need glibc >= 2.6 and linking with librt.
 At initializing a timer can make a bind to CPU using the flag HPCTIMER_BINDTOCPU.
