@@ -2,6 +2,17 @@
  * hpctimer.c: high-resolution timers library.
  */
 
+/** \mainpage High-Resolution timers library
+ * \section Timers
+ * - rdtsc
+ * - gettimeofday
+ * - clock_gettime
+ * \section Builds
+ * $ make
+ * \section Clean
+ * $make clean
+ */
+
 #include <sys/time.h>
 #include <time.h>
 #if defined(__gnu_linux__) || defined(linux)
@@ -15,6 +26,7 @@
 
 #include "hpctimer.h"
 
+/** \privatesection */
 struct hpctimer {
     hpctimer_type_t type;
     uint32_t flags;
@@ -22,7 +34,9 @@ struct hpctimer {
     uint64_t overhead;      /* in ticks */
     uint64_t freq           /* in MHz */;
     uint64_t (*gettime) ();
-    cpu_set_t cpuset; 
+#if defined(__gnu_linux__) || defined(linux)
+    cpu_set_t cpuset;       /* for bind to CPU */ 
+#endif
 };
 
 static const int usec = 1000000;
@@ -52,7 +66,6 @@ hpctimer_t *hpctimer_init(hpctimer_type_t type, uint32_t flags)
         hpctimer_set_cpuaffinity(timer);
         global_freq = hpctimer_calc_freq();    
     }
-
     timer->type = type;
     if (timer->type == HPCTIMER_GETTIMEOFDAY) {
         hpctimer_time_gettimeofday_init(timer);
@@ -132,34 +145,38 @@ static uint64_t hpctimer_calc_freq()
 static int hpctimer_set_cpuaffinity(hpctimer_t *timer)
 {
 #if defined(__gnu_linux__) || defined(linux)
-	cpu_set_t newcpuset;
-	int cpu;
+    cpu_set_t newcpuset;
+    int cpu;
 	
-	/* Save current cpu affinity */
-	CPU_ZERO(&timer->cpuset);
-	if (sched_getaffinity(0, sizeof(cpu_set_t), &timer->cpuset) == -1)
-		return 0;
+    /* Save current cpu affinity */
+    CPU_ZERO(&timer->cpuset);
+    if (sched_getaffinity(0, sizeof(cpu_set_t), &timer->cpuset) == -1)
+        return 0;
 	
-	/* Bind process to its current cpu */
-	CPU_ZERO(&newcpuset);
+    /* Bind process to its current cpu */
+    CPU_ZERO(&newcpuset);
     /* sched_getcpu() is available since glibc 2.6 */
-	if ((cpu = sched_getcpu() == -1))
-		return 0;
-
-	CPU_SET(cpu, &newcpuset);
-	if (sched_setaffinity(0, sizeof(cpu_set_t), &newcpuset) == -1) {
-		return 0;
-	}
-	return 1;
+    if ((cpu = sched_getcpu() == -1))
+        return 0;
+	
+    CPU_SET(cpu, &newcpuset);
+    if (sched_setaffinity(0, sizeof(cpu_set_t), &newcpuset) == -1)
+        return 0;
+	
+    return 1;
 #else
-#	error "Unsupported platform"
+#error "Unsupported platform"
 #endif		
 }
 
 static int hpctimer_restore_cpuaffinity(hpctimer_t *timer)
 {
+#if defined(__gnu_linux__) || defined(linux)
 	return (sched_setaffinity(0, sizeof(cpu_set_t), &timer->cpuset) != 1) ?
             1 : 0;
+//#else
+//    return 1;
+#endif
 }
 
 static void hpctimer_time_gettimeofday_init(hpctimer_t *timer) 
@@ -211,10 +228,6 @@ static void hpctimer_tsctimer_init(hpctimer_t *timer)
         timer->freq = global_freq;
     else 
         timer->freq = hpctimer_calc_freq();
-/*
-    timer->freq = (stop - start - timer->overhead) /
-                  (tv2.tv_sec * usec + tv2.tv_usec - 
-                   tv1.tv_sec * usec - tv1.tv_usec);*/
 }
 
 static void hpctimer_mpiwtime_init(hpctimer_t *timer)
