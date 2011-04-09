@@ -8,7 +8,7 @@ Timers:
 For use clock_gettime timers need glibc >= 2.6 and linking with librt.
 At initializing a timer can make a bind to CPU using the flag HPCTIMER_BINDTOCPU.
 
-***********
+**********
 Builds:
     $ make
 
