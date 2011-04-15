@@ -3,7 +3,7 @@ High-resolution timers library.
 Timers:
     * gettimeofday
     * rdtsc
-    * clock_gettime via CLOCK_PROCESS_CPUTIME_ID
+    * clock_gettime via CLOCK_MONOTONIC
     * MPI_Wtime (TODO)
 
 For use clock_gettime timers need glibc >= 2.6 and linking with librt.
