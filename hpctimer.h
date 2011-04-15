@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-#define uint64_t unsigned long long int
+#define uint64_t unsigned long int
 #define uint32_t unsigned int
 
 /** Flag to binding timer to cpu */
@@ -27,40 +27,48 @@ typedef enum {
 typedef struct hpctimer hpctimer_t;
 
 /** 
- * \function hpctimer_create
+ * \function hpctimer_timer_create
  * \breif initialize timer
  *
  * \param type type of timer
  * \param flags flags for timer
  * \return pointer to hpctimer_t
  */
-hpctimer_t *hpctimer_create(hpctimer_type_t type, uint32_t flags);
+hpctimer_t *hpctimer_timer_create(hpctimer_type_t type, uint32_t flags);
 
 /**
- * \function hpctimer_free
+ * \function hpctimer_timer_free
  * \breif is free descriptor of timer
  * 
  * \param timer discriptor of timer
  */
-void hpctimer_free(hpctimer_t *timer);
+void hpctimer_timer_free(hpctimer_t *timer);
 
 /**
- * \function hpctimer_wtime
- * \breif is return time from timers
+ * \function hpctimer_timer_wtime
+ * \breif is return time from target timer
  *
  * \param timer discriptor of timer
  * \return time in s.ms format
  */
-double hpctimer_wtime(hpctimer_t *timer);
+double hpctimer_timer_wtime(hpctimer_t *timer);
 
 /**
- * \function hpctimer_get_overhead
+ * \function hpctimer_timer_get_overhead
  * \breif is return overhead ticks
  *
  * \param timer discriptor of timer
  * \return overhead time in ticks
  */
-uint64_t hpctimer_get_overhead(hpctimer_t *timer);
+uint64_t hpctimer_timer_get_overhead(hpctimer_t *timer);
+
+/**
+ * \function hpctimer_wtime
+ * \breif is return time standart timer
+ *
+ * \return time in s.ms format
+ */
+double hpctimer_wtime();
 
 #ifdef __cplusplus
 }

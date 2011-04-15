@@ -34,7 +34,6 @@
 struct hpctimer {
     hpctimer_type_t type;
     uint32_t flags;
-    uint32_t clock_type;    /* for CLOCKGETTIME */
     uint64_t overhead;      /* in ticks */
     uint64_t freq           /* in MHz */;
     uint64_t (*gettime) ();
@@ -58,7 +57,7 @@ static __inline__ uint64_t hpctimer_time_tsc();
 static __inline__ uint64_t hpctimer_time_mpiwtime();
 static __inline__ uint64_t hpctimer_time_clockgettime();
 
-hpctimer_t *hpctimer_create(hpctimer_type_t type, uint32_t flags)
+hpctimer_t *hpctimer_timer_create(hpctimer_type_t type, uint32_t flags)
 {
     hpctimer_t *timer;
 
@@ -91,7 +90,7 @@ hpctimer_t *hpctimer_create(hpctimer_type_t type, uint32_t flags)
     return timer;
 }
 
-void hpctimer_free(hpctimer_t *timer) 
+void hpctimer_timer_free(hpctimer_t *timer) 
 {
     if (timer->flags & HPCTIMER_BINDTOCPU)
         hpctimer_restore_cpuaffinity(timer);
@@ -100,14 +99,19 @@ void hpctimer_free(hpctimer_t *timer)
         free(timer);
 }
 
-double hpctimer_wtime(hpctimer_t *timer) 
+double hpctimer_timer_wtime(hpctimer_t *timer) 
 {
     /* convert to seconds */
     return (double) timer->gettime() / timer->freq / usec;
 }
 
-uint64_t hpctimer_get_overhead(hpctimer_t *timer) {
+uint64_t hpctimer_timer_get_overhead(hpctimer_t *timer) {
     return timer->overhead;
+}
+
+double hpctimer_wtime()
+{
+    return hpctimer_gettimeofday() / usec;
 }
 
 static uint64_t hpctimer_calc_freq()

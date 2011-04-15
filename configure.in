@@ -39,7 +39,9 @@ AC_TYPE_UINT64_T
 
 # Checks for library functions.
 AC_FUNC_MALLOC
-AC_CHECK_FUNCS([clock_gettime gettimeofday sched_getcpu])
+AC_CHECK_FUNCS([gettimeofday sched_getcpu])
+
+AC_CHECK_LIB([rt], [clock_gettime])
 
 CFLAGS="-g"
 
