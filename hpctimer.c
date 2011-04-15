@@ -1,5 +1,5 @@
 /*
- * hpctimer.c: high-resolution timers library.
+ * hpctimer.c: High-resolution timers library.
  */
 
 /** \mainpage High-Resolution timers library
@@ -13,6 +13,8 @@
  * $make clean
  */
 
+#include <stdlib.h>
+
 #include <sys/time.h>
 #include <time.h>
 #if defined(__gnu_linux__) || defined(linux)
@@ -21,8 +23,6 @@
 #include <sched.h>
 #include <utmpx.h>
 #endif
-
-#include <stdlib.h>
 
 #include "hpctimer.h"
 
@@ -54,7 +54,7 @@ static __inline__ uint64_t hpctimer_time_tsc();
 static __inline__ uint64_t hpctimer_time_mpiwtime();
 static __inline__ uint64_t hpctimer_time_clockgettime();
 
-hpctimer_t *hpctimer_init(hpctimer_type_t type, uint32_t flags)
+hpctimer_t *hpctimer_create(hpctimer_type_t type, uint32_t flags)
 {
     hpctimer_t *timer;
 
@@ -111,6 +111,9 @@ static uint64_t hpctimer_calc_freq()
     uint64_t start, stop, overhead;
     struct timeval tv1, tv2;
     int i, j;
+   
+    gettimeofday(&tv1, NULL);
+    gettimeofday(&tv2, NULL);
     
     start = hpctimer_time_tsc();
     stop = hpctimer_time_tsc();
@@ -136,7 +139,7 @@ static uint64_t hpctimer_calc_freq()
         gettimeofday(&tv2, NULL);    
     }
 
-    /* return cpu frequence in ticks*/
+   /* return cpu frequence in ticks*/
     return (stop - start - overhead) /
            (tv2.tv_sec * usec + tv2.tv_usec - 
             tv1.tv_sec * usec - tv1.tv_usec);
@@ -158,7 +161,7 @@ static int hpctimer_set_cpuaffinity(hpctimer_t *timer)
     /* sched_getcpu() is available since glibc 2.6 */
     if ((cpu = sched_getcpu() == -1))
         return 0;
-	
+    printf("cpu: %d\n", cpu); 
     CPU_SET(cpu, &newcpuset);
     if (sched_setaffinity(0, sizeof(cpu_set_t), &newcpuset) == -1)
         return 0;
@@ -174,8 +177,8 @@ static int hpctimer_restore_cpuaffinity(hpctimer_t *timer)
 #if defined(__gnu_linux__) || defined(linux)
 	return (sched_setaffinity(0, sizeof(cpu_set_t), &timer->cpuset) != 1) ?
             1 : 0;
-//#else
-//    return 1;
+#else
+    return 1;
 #endif
 }
 
@@ -208,11 +211,11 @@ static void hpctimer_time_gettimeofday_init(hpctimer_t *timer)
 static void hpctimer_tsctimer_init(hpctimer_t *timer)
 {
     uint64_t start, stop, overhead;
-
+    
     start = hpctimer_time_tsc();
     stop = hpctimer_time_tsc();
     overhead = stop - start;
-
+    
     start = hpctimer_time_tsc();
     stop = hpctimer_time_tsc();
     overhead += stop - start;
@@ -220,7 +223,7 @@ static void hpctimer_tsctimer_init(hpctimer_t *timer)
     start = hpctimer_time_tsc();
     stop = hpctimer_time_tsc();
     overhead += stop - start;
-
+    
     overhead /= 3;
     timer->overhead = overhead > 0 ? overhead : 0;
 
@@ -275,16 +278,38 @@ static __inline__ uint64_t hpctimer_time_gettimeofday()
 
 static __inline__ uint64_t hpctimer_time_tsc()
 {
-    uint32_t low, high;
+#if defined(__x86_64__)
+	uint32_t low, high;
 	
-    __asm__ __volatile__(
-        "xorl %%eax, %%eax\n"
-        "cpuid\n"
-        "rdtsc\n"
-        : "=a" (low), "=d" (high)
-    );
+	__asm__ __volatile__(
+		"xorl %%eax, %%eax\n"
+		"cpuid\n"
+	//	:::	"%rax", "%rbx", "%rcx", "%rdx"
+	//);
+	//__asm__ __volatile__(
+		"rdtsc\n"
+		: "=a" (low), "=d" (high)
+	);
+			
+	return ((uint64_t)high << 32) | low;
+#elif defined(__i386__)
+	uint64_t val;
+	
+	__asm__ __volatile__(
+		"xorl %%eax, %%eax\n"
+		"cpuid\n"
+	//	:::	"%eax", "%ebx", "%ecx", "%edx"
+//	);
+//	__asm__ __volatile__(
+		"rdtsc\n"
+        "xorl %%ecx, %%ecx\n"
+		: "=A" (val)
+	);
 		
-    return ((uint64_t)high << 32) | low;
+	return val;
+#else
+#	error "Unsupported platform"
+#endif
 }
 
 static __inline__ uint64_t hpctimer_time_mpiwtime()
@@ -296,7 +321,7 @@ static __inline__ uint64_t hpctimer_time_clockgettime()
 {
 #if (_POSIX_C_SOURCE >= 199309L)
     struct timespec time;
-    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time); /* only CLOCK_MONOTONIC */
+    clock_gettime(CLOCK_MONOTONIC, &time); /* only CLOCK_MONOTONIC */
 
     return time.tv_sec * usec + time.tv_nsec / 1000;    
 #else
