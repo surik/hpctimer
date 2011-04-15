@@ -1,4 +1,4 @@
-gh-resolution timers library.
+High-resolution timers library.
 
 Timers:
     * gettimeofday

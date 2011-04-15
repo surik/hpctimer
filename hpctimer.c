@@ -13,6 +13,10 @@
  * $make clean
  */
 
+#ifndef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdlib.h>
 
 #include <sys/time.h>
@@ -284,9 +288,9 @@ static __inline__ uint64_t hpctimer_time_tsc()
 	__asm__ __volatile__(
 		"xorl %%eax, %%eax\n"
 		"cpuid\n"
-	//	:::	"%rax", "%rbx", "%rcx", "%rdx"
-	//);
-	//__asm__ __volatile__(
+		:::	"%rax", "%rbx", "%rcx", "%rdx"
+	);
+	__asm__ __volatile__(
 		"rdtsc\n"
 		: "=a" (low), "=d" (high)
 	);
@@ -298,9 +302,9 @@ static __inline__ uint64_t hpctimer_time_tsc()
 	__asm__ __volatile__(
 		"xorl %%eax, %%eax\n"
 		"cpuid\n"
-	//	:::	"%eax", "%ebx", "%ecx", "%edx"
-//	);
-//	__asm__ __volatile__(
+		:::	"%eax", "%ebx", "%ecx", "%edx"
+	);
+	__asm__ __volatile__(
 		"rdtsc\n"
         "xorl %%ecx, %%ecx\n"
 		: "=A" (val)
