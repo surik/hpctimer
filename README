@@ -6,8 +6,9 @@ Timers:
     * clock_gettime via CLOCK_MONOTONIC
     * MPI_Wtime (TODO)
 
-For use clock_gettime timers need glibc >= 2.6 and linking with librt.
-At initializing a timer can make a bind to CPU using the flag HPCTIMER_BINDTOCPU.
+For use clock_gettime timers linking with librt.
+At initializing a timer can make a bind to CPU using the flag HPCTIMER_BINDTOCPU
+(need glibc >= 2.6).
 
 **********
 Install:
