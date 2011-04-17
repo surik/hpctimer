@@ -28,6 +28,16 @@ AM_PROG_LIBTOOL
 AC_PROG_MAKE_SET
 #AC_LANG_C
 
+enable_tsc=yes
+#AC_ARG_ENABLE(tsc, 
+#    AS_HELP_STRING([--enable-tsc], [enable tsc timer [default=yes]]),
+#    [if test '' = "yes"
+#    then
+#        enable_tsc=yes
+#    else
+#        enable_tsc=no
+#    fi], [])
+
 # Checks for libraries.
 
 # Checks for header files.
@@ -41,7 +51,14 @@ AC_TYPE_UINT64_T
 AC_FUNC_MALLOC
 AC_CHECK_FUNCS([gettimeofday sched_getcpu])
 
-AC_CHECK_LIB([rt], [clock_gettime])
+AC_CHECK_LIB([rt], [clock_gettime], [AC_DEFINE([HAVE_CLOCKGETTIME], [1], [for CLOCKGETTIME timer])])
+
+if test "`grep -c tsc /proc/cpuinfo`" = "0"
+then
+    enable_tsc=no
+else
+    AC_DEFINE([HAVE_TSC], [1], [for TSC timer])
+fi
 
 CFLAGS="-g"
 

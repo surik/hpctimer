@@ -7,21 +7,24 @@
  * - rdtsc
  * - gettimeofday
  * - clock_gettime
- * \section Builds
+ * \section Install
+ * $ ./configure
  * $ make
- * \section Clean
- * $make clean
+ * $ sudo make install
+ * \section Unistall
+ * $ sudo make uninstall
  */
 
-#ifndef HAVE_CONFIG_H
+#ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
 
 #include <stdlib.h>
+#include <stdio.h>
 
 #include <sys/time.h>
 #include <time.h>
-#if defined(__gnu_linux__) || defined(linux)
+#ifdef HAVE_SCHED_GETCPU
 #define __USE_GNU
 #define _GNU_SOURCE
 #include <sched.h>
@@ -37,7 +40,7 @@ struct hpctimer {
     uint64_t overhead;      /* in ticks */
     uint64_t freq           /* in MHz */;
     uint64_t (*gettime) ();
-#if defined(__gnu_linux__) || defined(linux)
+#if HAVE_SCHED_GETCPU
     cpu_set_t cpuset;       /* for bind to CPU */ 
 #endif
 };
@@ -49,7 +52,7 @@ static void hpctimer_time_gettimeofday_init(hpctimer_t *timer);
 static void hpctimer_tsctimer_init(hpctimer_t *timer);
 static void hpctimer_mpiwtime_init(hpctimer_t *timer);
 static void hpctimer_clockgettime_init(hpctimer_t *timer);
-static uint64_t hpctimer_calc_freq();
+static uint64_t hpctimer_cpufreq_calc();
 static int hpctimer_set_cpuaffinity(hpctimer_t *timer);
 static int hpctimer_restore_cpuaffinity(hpctimer_t *timer);
 static __inline__ uint64_t hpctimer_time_gettimeofday();
@@ -65,35 +68,57 @@ hpctimer_t *hpctimer_timer_create(hpctimer_type_t type, uint32_t flags)
         return NULL;
 
     timer->flags = flags;
+#ifdef HAVE_SCHED_GETCPU
     if (timer->flags & HPCTIMER_BINDTOCPU) {
         hpctimer_set_cpuaffinity(timer);
-        global_freq = hpctimer_calc_freq();    
+        global_freq = hpctimer_cpufreq_calc();    
     }
+#endif /* HAVE_SCHED_GETCPU */
+    
     timer->type = type;
+    
     if (timer->type == HPCTIMER_GETTIMEOFDAY) {
+#ifdef HAVE_GETTIMEOFDAY
         hpctimer_time_gettimeofday_init(timer);
-        timer->gettime = hpctimer_time_gettimeofday;
-    } else if (timer->type == HPCTIMER_TSC) {
-        hpctimer_tsctimer_init(timer);
-        timer->gettime = hpctimer_time_tsc;
-    } else if (timer->type == HPCTIMER_MPIWTIME) {
-        hpctimer_mpiwtime_init(timer);
-        timer->gettime = hpctimer_time_mpiwtime;
-    } else if (timer->type == HPCTIMER_CLOCKGETTIME) {
-        hpctimer_clockgettime_init(timer);
-        timer->gettime = hpctimer_time_clockgettime;
-    } else {
+        return timer;
+#else
         free(timer);
         return NULL;
-    }
-
-    return timer;
+#endif
+    } 
+    if (timer->type == HPCTIMER_TSC) {
+#ifdef HAVE_TSC
+        hpctimer_tsctimer_init(timer);
+        return timer;
+#else
+        free(timer);
+        return NULL;
+#endif
+    } 
+    if (timer->type == HPCTIMER_MPIWTIME) {
+        hpctimer_mpiwtime_init(timer);
+        return timer;
+    } 
+    if (timer->type == HPCTIMER_CLOCKGETTIME) {
+#ifdef HAVE_CLOCKGETTIME
+        hpctimer_clockgettime_init(timer);
+        return timer;
+#else
+        free(timer);
+        return timer;
+#endif
+    } 
+    
+    free(timer);
+    return NULL;
 }
 
 void hpctimer_timer_free(hpctimer_t *timer) 
 {
+#ifdef HAVE_SCHED_GETCPU
     if (timer->flags & HPCTIMER_BINDTOCPU)
         hpctimer_restore_cpuaffinity(timer);
+#endif /* HAVE_SHED_GETCPU */
 
     if (timer)
         free(timer);
@@ -102,27 +127,33 @@ void hpctimer_timer_free(hpctimer_t *timer)
 double hpctimer_timer_wtime(hpctimer_t *timer) 
 {
     /* convert to seconds */
-    return (double) timer->gettime() / timer->freq / usec;
+    return (double)timer->gettime() / timer->freq / usec;
 }
 
 uint64_t hpctimer_timer_get_overhead(hpctimer_t *timer) {
     return timer->overhead;
 }
 
+/* TODO: add tsc timer */
 double hpctimer_wtime()
 {
-    return hpctimer_gettimeofday() / usec;
+    /* choose the best timer */
+#if defined(HAVE_CLOCKGETTIME)
+    return (double)hpctimer_time_clockgettime() / usec;
+#elif defined(HAVE_GETTIMEOFDAY)
+    return (double)hpctimer_time_gettimeofday() / usec;
+#else
+#   error "No supported timer"
+#endif
 }
 
-static uint64_t hpctimer_calc_freq()
+static uint64_t hpctimer_cpufreq_calc()
 {
+#ifdef HAVE_TSC && HAVE_GETTIMEOFDAY  
     uint64_t start, stop, overhead;
     struct timeval tv1, tv2;
     int i, j;
    
-    gettimeofday(&tv1, NULL);
-    gettimeofday(&tv2, NULL);
-    
     start = hpctimer_time_tsc();
     stop = hpctimer_time_tsc();
     overhead = stop - start;
@@ -151,8 +182,20 @@ static uint64_t hpctimer_calc_freq()
     return (stop - start - overhead) /
            (tv2.tv_sec * usec + tv2.tv_usec - 
             tv1.tv_sec * usec - tv1.tv_usec);
+#else
+    /* read /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq */
+    FILE *fd;
+    int khz;
+        
+    fd = fopen("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq", "r");
+    fscanf(fd, "%d", &khz);
+    fclose(fd);
+    
+    return (uint64_t)khz / 1000;
+#endif /* HAVE_TSC && HAVE_GETTIMEOFDAY */
 }
 
+#ifdef HAVE_SCHED_GETCPU
 static int hpctimer_set_cpuaffinity(hpctimer_t *timer)
 {
 #if defined(__gnu_linux__) || defined(linux)
@@ -169,14 +212,14 @@ static int hpctimer_set_cpuaffinity(hpctimer_t *timer)
     /* sched_getcpu() is available since glibc 2.6 */
     if ((cpu = sched_getcpu() == -1))
         return 0;
-    printf("cpu: %d\n", cpu); 
+    
     CPU_SET(cpu, &newcpuset);
     if (sched_setaffinity(0, sizeof(cpu_set_t), &newcpuset) == -1)
         return 0;
 	
     return 1;
 #else
-#error "Unsupported platform"
+#   error "Unsupported platform"
 #endif		
 }
 
@@ -189,7 +232,9 @@ static int hpctimer_restore_cpuaffinity(hpctimer_t *timer)
     return 1;
 #endif
 }
+#endif /* HAVE_SCHED_GETCOU */
 
+#ifdef HAVE_GETTIMEOFDAY
 static void hpctimer_time_gettimeofday_init(hpctimer_t *timer) 
 {
     uint64_t freq, start, stop, overhead;
@@ -197,7 +242,7 @@ static void hpctimer_time_gettimeofday_init(hpctimer_t *timer)
     if (global_freq && timer->flags & HPCTIMER_BINDTOCPU)
         freq = global_freq;
     else
-        freq = hpctimer_calc_freq();
+        freq = hpctimer_cpufreq_calc();
 
     start = hpctimer_time_gettimeofday();
     stop = hpctimer_time_gettimeofday();
@@ -214,8 +259,11 @@ static void hpctimer_time_gettimeofday_init(hpctimer_t *timer)
     overhead /= 3;
     timer->overhead = overhead > 0 ? overhead : 0;
     timer->freq = 1;
+    timer->gettime = hpctimer_time_gettimeofday;
 }
+#endif /* HAVE_GETTIMEOFDAY */
 
+#ifdef HAVE_TSC
 static void hpctimer_tsctimer_init(hpctimer_t *timer)
 {
     uint64_t start, stop, overhead;
@@ -234,18 +282,21 @@ static void hpctimer_tsctimer_init(hpctimer_t *timer)
     
     overhead /= 3;
     timer->overhead = overhead > 0 ? overhead : 0;
+    timer->gettime = hpctimer_time_tsc;
 
     if (global_freq)
         timer->freq = global_freq;
     else 
-        timer->freq = hpctimer_calc_freq();
+        timer->freq = hpctimer_cpufreq_calc();
 }
+#endif /* HAVE_TSC */
 
 static void hpctimer_mpiwtime_init(hpctimer_t *timer)
 {
     /* calculate overhead for MPI_Wtime() and freq */
 }
 
+#ifdef HAVE_CLOCKGETTIME
 static void hpctimer_clockgettime_init(hpctimer_t *timer)
 {
     uint64_t start, stop, overhead, freq;
@@ -253,7 +304,7 @@ static void hpctimer_clockgettime_init(hpctimer_t *timer)
     if (global_freq)
         freq = global_freq;
     else
-        freq = hpctimer_calc_freq();
+        freq = hpctimer_cpufreq_calc();
     
     start = hpctimer_time_clockgettime();
     stop = hpctimer_time_clockgettime();
@@ -269,10 +320,12 @@ static void hpctimer_clockgettime_init(hpctimer_t *timer)
 
     overhead /= 3;
     timer->overhead = overhead > 0 ? overhead : 0;
-
     timer->freq = 1;
+    timer->gettime = hpctimer_time_clockgettime;
 }
+#endif /* HAVE_CLOCKGETTIME */
 
+#ifdef HAVE_GETTIMEOFDAY
 static __inline__ uint64_t hpctimer_time_gettimeofday()
 {
     struct timeval tv;
@@ -283,7 +336,9 @@ static __inline__ uint64_t hpctimer_time_gettimeofday()
 
     return curtime;
 }
+#endif /* HAVE_GETTIMEROFDAY */
 
+#ifdef HAVE_TSC
 static __inline__ uint64_t hpctimer_time_tsc()
 {
 #if defined(__x86_64__)
@@ -319,20 +374,24 @@ static __inline__ uint64_t hpctimer_time_tsc()
 #	error "Unsupported platform"
 #endif
 }
+#endif /* HAVE_TSC */
 
 static __inline__ uint64_t hpctimer_time_mpiwtime()
 {
     /* return MPI_Wtime() */
 }
 
+#ifdef HAVE_CLOCKGETTIME
 static __inline__ uint64_t hpctimer_time_clockgettime()
 {
-#if (_POSIX_C_SOURCE >= 199309L)
+#if defined(HAVE_CLOCKGETTIME) && (_POSIX_C_SOURCE >= 199309L)
     struct timespec time;
+    
     clock_gettime(CLOCK_MONOTONIC, &time); /* only CLOCK_MONOTONIC */
-
+    
     return time.tv_sec * usec + time.tv_nsec / 1000;    
 #else
     return 0;
 #endif
 }
+#endif /* HAVE_CLOCKGETTIME */
