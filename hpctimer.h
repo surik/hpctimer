@@ -55,12 +55,12 @@ double hpctimer_timer_wtime(hpctimer_t *timer);
 
 /**
  * \function hpctimer_timer_get_overhead
- * \breif is return overhead ticks
+ * \breif is return overhead time
  *
  * \param timer discriptor of timer
- * \return overhead time in ticks
+ * \return overhead time in s.ms
  */
-uint64_t hpctimer_timer_get_overhead(hpctimer_t *timer);
+double hpctimer_timer_get_overhead(hpctimer_t *timer);
 
 /**
  * \function hpctimer_wtime
@@ -69,6 +69,14 @@ uint64_t hpctimer_timer_get_overhead(hpctimer_t *timer);
  * \return time in s.ms format
  */
 double hpctimer_wtime();
+
+/**
+ * \function hpctimer_get_overhead
+ * \breif if return overhead time
+ *
+ * \return overhead time is s.ms
+ */
+double hpctimer_get_overhead();
 
 #ifdef __cplusplus
 }
