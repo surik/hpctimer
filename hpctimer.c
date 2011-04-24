@@ -146,24 +146,19 @@ double hpctimer_timer_get_overhead(hpctimer_t *timer) {
 double hpctimer_wtime()
 {
     /* choose the best timer */
+    if (!global_timer_init) {
+        global_timer_init = 1;
 #ifdef HAVE_TSC
-    if (!global_timer_init) {
-        global_timer_init = 1;
         global_timer = hpctimer_timer_create(HPCTIMER_TSC, DEFAULT_FLAGS);
-    }
 #elif defined(HAVE_CLOCKGETTIME)
-    if (!global_timer_init) {
-        global_timer_init = 1;
         global_timer = hpctimer_timer_create(HPCTIMER_CLOCKGETTIME, 
                                              DEFAULT_FLAGS);
-    }
 #elif defined(HAVE_GETTIMEOFDAY)
-    if (!global_timer_init) {
-        global_timer_init = 1;
         global_timer = hpctimer_timer_create(HPCTIMER_GETTIMEOFDAY, 
                                              DEFAULT_FLAGS);
-    }
 #endif
+    }
+
     if (global_timer_init)
         return hpctimer_timer_wtime(global_timer);
   
@@ -172,7 +167,7 @@ double hpctimer_wtime()
 
 double hpctimer_get_overhead()
 {
-    /* initializatopn of global timer if need */
+    /* initialization of global timer if need */
     if (!global_timer_init) 
         hpctimer_wtime();
 
