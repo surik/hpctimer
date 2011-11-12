@@ -405,7 +405,7 @@ static __inline__ uint64_t hpctimer_time_tsc()
 #ifdef HAVE_CLOCKGETTIME
 static __inline__ uint64_t hpctimer_time_clockgettime()
 {
-#if defined(HAVE_CLOCKGETTIME) && (_POSIX_C_SOURCE >= 199309L)
+#if (_POSIX_C_SOURCE >= 199309L)
     struct timespec time;
     
     clock_gettime(CLOCK_MONOTONIC, &time); /* only CLOCK_MONOTONIC */
